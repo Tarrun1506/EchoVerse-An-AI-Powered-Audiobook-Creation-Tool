@@ -1,4 +1,3 @@
-# models/tts_generator.py
 from transformers import SpeechT5Processor, SpeechT5ForTextToSpeech, SpeechT5HifiGan
 import torch
 import numpy as np
@@ -6,8 +5,6 @@ import soundfile as sf
 import io
 import os
 from datasets import load_dataset
-from huggingface_hub import hf_hub_download
-import zipfile
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,102 +13,120 @@ class TTSGenerator:
     def __init__(self):
         self.device = 0 if torch.cuda.is_available() else -1
         self._initialize_model()
+        self._load_speaker_embeddings()
         
     def _initialize_model(self):
+        """Initialize SpeechT5 model components"""
         try:
             model_name = "microsoft/speecht5_tts"
             self.processor = SpeechT5Processor.from_pretrained(model_name)
             self.model = SpeechT5ForTextToSpeech.from_pretrained(model_name)
             self.vocoder = SpeechT5HifiGan.from_pretrained("microsoft/speecht5_hifigan")
-            # Load speaker embeddings for both male and female voices
-            self.speaker_embeddings = self._load_speaker_embeddings()
         except Exception as e:
             print(f"Error initializing SpeechT5 model: {e}")
             raise
     
-    def _load_speaker_embeddings(self) -> dict:
-        """Load speaker embeddings for both male and female voices."""
-        embeddings = {}
-        
+    def _load_speaker_embeddings(self):
+        """Load different speaker embeddings for voice variety"""
         try:
-            # Try to load from the dataset
             embeddings_dataset = load_dataset("Matthijs/cmu-arctic-xvectors", split="validation")
             
-            # Select different speakers for male and female voices
-            # These indices are examples - you might need to adjust based on the dataset
-            embeddings['male'] = torch.tensor(embeddings_dataset[7306]["xvector"]).unsqueeze(0)
-            embeddings['female'] = torch.tensor(embeddings_dataset[9000]["xvector"]).unsqueeze(0)
-            
-        except Exception:
-            try:
-                # Fallback: download the zip and extract embeddings
-                zip_path = hf_hub_download(
-                    repo_id="Matthijs/cmu-arctic-xvectors",
-                    filename="spkrec-xvect.zip",
-                    repo_type="dataset",
-                )
-                
-                with zipfile.ZipFile(zip_path, "r") as zf:
-                    npy_files = sorted([name for name in zf.namelist() if name.endswith(".npy")])
-                    
-                    # Use different files for male and female voices
-                    male_index = 7306 if len(npy_files) > 7306 else 0
-                    female_index = 9000 if len(npy_files) > 9000 else (1 if len(npy_files) > 1 else 0)
-                    
-                    # Load male voice embedding
-                    data = zf.read(npy_files[male_index])
-                    male_xvector = np.load(io.BytesIO(data))
-                    embeddings['male'] = torch.tensor(male_xvector).unsqueeze(0)
-                    
-                    # Load female voice embedding
-                    data = zf.read(npy_files[female_index])
-                    female_xvector = np.load(io.BytesIO(data))
-                    embeddings['female'] = torch.tensor(female_xvector).unsqueeze(0)
-                    
-            except Exception as inner_e:
-                print(f"Falling back to random speaker embeddings due to error: {inner_e}")
-                # Final fallback: random embeddings with correct dimension
-                embeddings['male'] = torch.randn(1, 512)
-                embeddings['female'] = torch.randn(1, 512)
+            # Define speaker embeddings for different voices
+            # Based on CMU ARCTIC dataset speakers: bdl (US male), slt (US female), 
+            # jmk (Canadian male), awb (Scottish male), rms (US male), clb (US female), ksp (Indian male)
+            self.speaker_embeddings = {
+                7306: torch.tensor(embeddings_dataset[7306]["xvector"]).unsqueeze(0),  # Female - US (slt)
+                5000: torch.tensor(embeddings_dataset[5000]["xvector"]).unsqueeze(0),  # Female - UK style
+                1234: torch.tensor(embeddings_dataset[1234]["xvector"]).unsqueeze(0),  # Male - US (bdl)
+                3000: torch.tensor(embeddings_dataset[3000]["xvector"]).unsqueeze(0),  # Male - Scottish (awb)
+            }
+        except Exception as e:
+            print(f"Error loading speaker embeddings: {e}")
+            # Fallback to default embedding
+            self.speaker_embeddings = {
+                7306: torch.randn(1, 512),  # Default female
+                1234: torch.randn(1, 512),  # Default male
+            }
+    
+    def generate_speech(self, text: str, voice_embedding_id: int = 7306, speed: float = 1.0) -> bytes:
+        """
+        Generate speech using specified voice embedding
         
-        return embeddings
+        Args:
+            text: Text to convert to speech
+            voice_embedding_id: ID of the voice embedding to use
+            speed: Audio playback speed multiplier
         
-    def generate_speech(self, text: str, voice_model: str = "microsoft/speecht5_tts", 
-                       voice_gender: str = "female", speed: float = 1.0) -> bytes:
+        Returns:
+            Audio data as bytes
+        """
         try:
+            # Truncate text if too long
             if len(text) > 1000:
                 text = text[:1000] + "..."
-                
+            
+            # Get speaker embedding
+            speaker_embedding = self.speaker_embeddings.get(voice_embedding_id, self.speaker_embeddings[7306])
+            
+            # Process input
             inputs = self.processor(text=text, return_tensors="pt")
             
-            # Get the appropriate speaker embedding based on gender
-            speaker_embedding = self.speaker_embeddings.get(voice_gender, self.speaker_embeddings['female'])
-            
+            # Generate speech
             speech = self.model.generate_speech(
                 inputs["input_ids"], 
                 speaker_embedding, 
                 vocoder=self.vocoder
             )
             
-            speech = speech.numpy()
+            # Apply speed modification
+            if speed != 1.0:
+                speech = self._modify_speed(speech.numpy(), speed)
+            else:
+                speech = speech.numpy()
+            
             return self._audio_to_bytes(speech, sample_rate=16000)
             
         except Exception as e:
             print(f"Error generating speech: {e}")
             return self._generate_fallback(text)
-        
+    
+    def _modify_speed(self, audio: np.ndarray, speed: float) -> np.ndarray:
+        """Modify audio playback speed"""
+        try:
+            import librosa
+            return librosa.effects.time_stretch(audio, rate=speed)
+        except ImportError:
+            # Simple resampling if librosa not available
+            indices = np.round(np.arange(0, len(audio), speed)).astype(int)
+            indices = indices[indices < len(audio)]
+            return audio[indices]
+    
     def _audio_to_bytes(self, audio: np.ndarray, sample_rate: int) -> bytes:
+        """Convert audio array to bytes"""
+        # Ensure audio is in the right format
         if audio.dtype != np.int16:
             audio = (audio * 32767).astype(np.int16)
+        
+        # Create bytes buffer
         buffer = io.BytesIO()
         sf.write(buffer, audio, sample_rate, format='WAV')
         buffer.seek(0)
         return buffer.read()
     
     def _generate_fallback(self, text: str) -> bytes:
+        """Generate a simple fallback audio"""
         duration = len(text) * 0.1
         sample_rate = 16000
         samples = int(duration * sample_rate)
         t = np.linspace(0, duration, samples)
         audio = 0.1 * np.sin(2 * np.pi * 440 * t)
         return self._audio_to_bytes(audio, sample_rate)
+    
+    def get_available_voices(self):
+        """Return information about available voices"""
+        return {
+            7306: {"name": "Emma", "gender": "female", "accent": "US", "description": "Clear, professional female voice"},
+            5000: {"name": "Sarah", "gender": "female", "accent": "UK", "description": "Elegant British female voice"},
+            1234: {"name": "James", "gender": "male", "accent": "US", "description": "Deep, authoritative male voice"},
+            3000: {"name": "David", "gender": "male", "accent": "Scottish", "description": "Rich Scottish male voice"}
+        }

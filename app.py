@@ -1,4 +1,3 @@
-# app.py (updated)
 import streamlit as st
 import os
 import base64
@@ -20,25 +19,36 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS styling for a professional look
+# Advanced CSS styling for professional look
 def load_css():
     css = """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
-    * {
-        font-family: 'Poppins', sans-serif;
+    .stApp {
+        font-family: 'Inter', sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .main-container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        padding: 2rem;
+        margin: 1rem;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
     }
     
     .main-header {
         text-align: center;
-        background: linear-gradient(135deg, #6e8efb, #a777e3);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
+        background-clip: text;
         font-size: 3.5rem;
         font-weight: 700;
         margin-bottom: 1rem;
-        padding: 0.5rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
     }
     
     .subtitle {
@@ -50,134 +60,149 @@ def load_css():
     }
     
     .section-header {
-        color: #495057;
-        font-size: 1.6rem;
+        color: #2d3748;
+        font-size: 1.8rem;
         font-weight: 600;
-        margin: 2rem 0 1rem 0;
-        padding-bottom: 0.5rem;
-        border-bottom: 2px solid #e9ecef;
+        margin: 2rem 0 1.5rem 0;
+        padding-bottom: 0.8rem;
+        border-bottom: 3px solid;
+        border-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%) 1;
         position: relative;
     }
     
-    .section-header:after {
+    .section-header::before {
         content: '';
         position: absolute;
-        bottom: -2px;
         left: 0;
-        width: 60px;
-        height: 2px;
-        background: linear-gradient(90deg, #6e8efb, #a777e3);
+        bottom: -3px;
+        width: 50px;
+        height: 3px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
     
     .audio-container {
-        background: #f8f9fa;
-        padding: 1.5rem;
-        border-radius: 12px;
-        margin: 1rem 0;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        border: 1px solid #e9ecef;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        margin: 1.5rem 0;
+        border: 1px solid #dee2e6;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
     }
     
     .text-comparison {
         background: #ffffff;
         padding: 1.5rem;
-        border-radius: 12px;
+        border-radius: 15px;
         border: 1px solid #e9ecef;
-        margin: 0.5rem 0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.03);
-        transition: all 0.3s ease;
+        margin: 1rem 0;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
     
     .text-comparison:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
     }
     
-    .sidebar .sidebar-content {
-        background: linear-gradient(to bottom, #f8f9fa, #e9ecef);
-        padding: 1.5rem 1rem;
+    .voice-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        padding: 1rem;
+        border-radius: 12px;
+        border: 2px solid transparent;
+        margin: 0.5rem 0;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
     }
     
-    .stSelectbox, .stSlider, .stRadio {
-        margin-bottom: 1.5rem;
+    .voice-card:hover {
+        border-color: #667eea;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
     }
     
-    .stButton button {
-        background: linear-gradient(135deg, #6e8efb, #a777e3);
+    .voice-card.selected {
+        border-color: #667eea;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .sidebar .stSelectbox > div > div {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border-radius: 10px;
+        border: 2px solid #e9ecef;
+    }
+    
+    .stButton > button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
-        font-weight: 500;
-        width: 100%;
-        transition: all 0.3s ease;
-    }
-    
-    .stButton button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(106, 142, 251, 0.4);
-    }
-    
-    .history-item {
-        background: white;
-        padding: 1rem;
-        border-radius: 8px;
-        margin-bottom: 1rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        border-left: 4px solid #6e8efb;
-        transition: all 0.3s ease;
-    }
-    
-    .history-item:hover {
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        transform: translateX(4px);
-    }
-    
-    .card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        margin-bottom: 1.5rem;
-        border: 1px solid #e9ecef;
-    }
-    
-    .metric-value {
-        font-size: 1.8rem;
+        border-radius: 25px;
+        padding: 0.8rem 2rem;
         font-weight: 600;
-        color: #6e8efb;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     }
     
-    .metric-label {
-        font-size: 0.9rem;
-        color: #6c757d;
-        text-transform: uppercase;
-        letter-spacing: 1px;
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
     }
     
-    .progress-bar {
-        height: 8px;
-        border-radius: 4px;
-        background: #e9ecef;
-        overflow: hidden;
+    .progress-container {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 1rem;
         margin: 1rem 0;
     }
     
-    .progress-fill {
-        height: 100%;
-        background: linear-gradient(90deg, #6e8efb, #a777e3);
-        border-radius: 4px;
-        transition: width 0.5s ease;
+    .stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 15px;
+        text-align: center;
+        margin: 1rem 0;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
     }
     
-    @media (max-width: 768px) {
-        .main-header {
-            font-size: 2.5rem;
-        }
-        
-        .subtitle {
-            font-size: 1.1rem;
-        }
+    .stats-number {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    
+    .past-narration-item {
+        background: #ffffff;
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        padding: 1rem;
+        margin: 0.8rem 0;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .past-narration-item:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        border-color: #667eea;
+    }
+    
+    .toast-success {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+    }
+    
+    .toast-error {
+        background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
+        color: white;
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 1rem 0;
     }
     </style>
     """
@@ -193,273 +218,297 @@ def initialize_session_state():
         st.session_state.tts_generator = TTSGenerator()
     if 'session_manager' not in st.session_state:
         st.session_state.session_manager = SessionManager()
+    if 'selected_voice' not in st.session_state:
+        st.session_state.selected_voice = "Emma (Female - US)"
+
+def get_voice_options():
+    """Return available voice options with gender and accent info"""
+    return {
+        "Emma (Female - US)": {"embedding_id": 7306, "gender": "female", "accent": "US", "description": "Clear, professional female voice"},
+        "Sarah (Female - UK)": {"embedding_id": 5000, "gender": "female", "accent": "UK", "description": "Elegant British female voice"},
+        "James (Male - US)": {"embedding_id": 1234, "gender": "male", "accent": "US", "description": "Deep, authoritative male voice"},
+        "David (Male - Scottish)": {"embedding_id": 3000, "gender": "male", "accent": "Scottish", "description": "Rich Scottish male voice"}
+    }
 
 def main():
     load_css()
     initialize_session_state()
     
-    # Main header
-    st.markdown('<h1 class="main-header">🎧 EchoVerse</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="subtitle">Transform your text into expressive audiobooks with AI</p>', 
-                unsafe_allow_html=True)
-    
-    # Sidebar controls
-    with st.sidebar:
-        st.markdown("## ⚙️ Configuration")
+    # Main container
+    with st.container():
+        st.markdown('<div class="main-container">', unsafe_allow_html=True)
         
-        # Tone selection
-        tone = st.selectbox(
-            "🎭 Select Tone",
-            options=["neutral", "suspenseful", "inspiring", "cheerful", "serious", "melancholic"],
-            help="Choose the tone for text rewriting"
-        )
+        # Header
+        st.markdown('<h1 class="main-header">🎧 EchoVerse</h1>', unsafe_allow_html=True)
+        st.markdown('<p class="subtitle">Transform your text into expressive audiobooks with AI-powered voices</p>', 
+                    unsafe_allow_html=True)
         
-        # Voice selection (gender)
-        voice_gender = st.selectbox(
-            "🗣️ Voice Gender",
-            options=["Male", "Female"],
-            help="Choose the voice gender for narration"
-        )
+        # Sidebar configuration
+        with st.sidebar:
+            st.markdown("## ⚙️ Voice & Style Configuration")
+            
+            # Voice selection with rich cards
+            st.markdown("### 🎤 Select Voice")
+            voice_options = get_voice_options()
+            
+            selected_voice = st.radio(
+                "Choose your preferred voice:",
+                options=list(voice_options.keys()),
+                key="voice_selection",
+                help="Select from our premium voice collection"
+            )
+            
+            # Display voice info
+            if selected_voice:
+                voice_info = voice_options[selected_voice]
+                st.markdown(f"""
+                <div class="voice-card selected">
+                    <strong>{selected_voice}</strong><br>
+                    <small>{voice_info['description']}</small><br>
+                    <em>Gender: {voice_info['gender'].title()} | Accent: {voice_info['accent']}</em>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("---")
+            
+            # Tone selection
+            tone = st.selectbox(
+                "🎭 Select Tone",
+                options=["neutral", "suspenseful", "inspiring"],
+                help="Choose the emotional tone for text rewriting"
+            )
+            
+            # Advanced settings
+            st.markdown("### 🔧 Advanced Settings")
+            max_length = st.slider("Max tokens for rewriting", 100, 1000, 300, 50)
+            audio_speed = st.slider("Audio speed", 0.5, 2.0, 1.0, 0.1)
+            
+            # Statistics
+            st.markdown("### 📊 Session Stats")
+            narration_count = len(st.session_state.session_manager.get_narrations())
+            st.markdown(f"""
+            <div class="stats-card">
+                <div class="stats-number">{narration_count}</div>
+                <div>Narrations Created</div>
+            </div>
+            """, unsafe_allow_html=True)
         
-        # Voice model selection
-        voice_model = st.selectbox(
-            "🎤 Select Voice Model",
-            options=[
-                "microsoft/speecht5_tts",
-                "suno/bark-small",
-                "facebook/mms-tts-eng"
-            ],
-            help="Choose the text-to-speech model"
-        )
+        # Main content area
+        col1, col2 = st.columns([2, 1], gap="large")
         
-        # Audio speed control (for playback only)
-        audio_speed = st.slider("Audio speed", 0.5, 2.0, 1.0, 0.1, help="Adjust the playback speed of the audio")
-        
-        # Add some metrics
-        st.markdown("---")
-        st.markdown("### 📊 Statistics")
-        col1, col2 = st.columns(2)
         with col1:
-            st.markdown('<div class="card">', unsafe_allow_html=True)
-            st.markdown('<div class="metric-value">' + str(len(st.session_state.narrations)) + '</div>', unsafe_allow_html=True)
-            st.markdown('<div class="metric-label">Narrations</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown('<h2 class="section-header">📝 Input Text</h2>', unsafe_allow_html=True)
+            
+            # Input method selection
+            input_method = st.radio(
+                "Choose input method:",
+                ["Type/Paste Text", "Upload .txt File"],
+                horizontal=True,
+                help="Select how you want to provide your text"
+            )
+            
+            text_input = ""
+            if input_method == "Type/Paste Text":
+                text_input = st.text_area(
+                    "Enter your text here:",
+                    height=250,
+                    placeholder="Paste your text here or upload a .txt file...\n\nTip: Longer texts work best for audiobook creation!",
+                    help="Enter the text you want to convert to an audiobook"
+                )
+            else:
+                uploaded_file = st.file_uploader(
+                    "Upload a .txt file",
+                    type=['txt'],
+                    help="Maximum file size: 200MB"
+                )
+                if uploaded_file:
+                    try:
+                        text_input = uploaded_file.read().decode('utf-8')
+                        st.success(f"✅ File uploaded successfully! ({len(text_input)} characters)")
+                        with st.expander("📄 File Content Preview", expanded=False):
+                            st.text_area(
+                                "Preview:",
+                                text_input[:1000] + "..." if len(text_input) > 1000 else text_input,
+                                height=150,
+                                disabled=True
+                            )
+                    except Exception as e:
+                        st.error(f"❌ Error reading file: {str(e)}")
+            
+            # Generate button
+            generate_col1, generate_col2, generate_col3 = st.columns([1, 2, 1])
+            with generate_col2:
+                if st.button("🎯 Generate Audiobook", type="primary", use_container_width=True):
+                    if not text_input.strip():
+                        st.error("⚠️ Please provide some text to convert.")
+                    else:
+                        generate_audiobook(text_input, tone, selected_voice, voice_options, max_length, audio_speed)
         
         with col2:
-            st.markdown('<div class="card">', unsafe_allow_html=True)
-            st.markdown('<div class="metric-value">' + str(sum(len(narration.get('original_text', '')) for narration in st.session_state.narrations)) + '</div>', unsafe_allow_html=True)
-            st.markdown('<div class="metric-label">Characters</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Main content area
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.markdown('<h2 class="section-header">📝 Input Text</h2>', unsafe_allow_html=True)
+            st.markdown('<h2 class="section-header">📚 Past Narrations</h2>', unsafe_allow_html=True)
+            display_past_narrations()
         
-        # Text input options
-        input_method = st.radio(
-            "Choose input method:",
-            ["Type/Paste Text", "Upload .txt File"],
-            horizontal=True
-        )
-        
-        text_input = ""
-        if input_method == "Type/Paste Text":
-            text_input = st.text_area(
-                "Enter your text here:",
-                height=250,
-                placeholder="Paste your text here or upload a .txt file...",
-                label_visibility="collapsed"
-            )
-        else:
-            uploaded_file = st.file_uploader(
-                "Upload a .txt file",
-                type=['txt'],
-                help="Maximum file size: 200MB"
-            )
-            if uploaded_file:
-                try:
-                    text_input = uploaded_file.read().decode('utf-8')
-                    st.success(f"✅ File uploaded successfully! ({len(text_input)} characters)")
-                    st.text_area("File content preview:", text_input[:500] + "..." if len(text_input) > 500 else text_input, height=150)
-                except Exception as e:
-                    st.error(f"Error reading file: {str(e)}")
-        
-        # Character count
-        if text_input:
-            st.caption(f"Character count: {len(text_input)}")
-        
-        # Generate button
-        if st.button("🎯 Generate Audiobook", type="primary", use_container_width=True):
-            if not text_input.strip():
-                st.error("Please provide some text to convert.")
-            else:
-                generate_audiobook(text_input, tone, voice_model, voice_gender, audio_speed)
-    
-    with col2:
-        st.markdown('<h2 class="section-header">📚 Recent Narrations</h2>', unsafe_allow_html=True)
-        display_past_narrations()
+        st.markdown('</div>', unsafe_allow_html=True)
 
-def generate_audiobook(text, tone, voice_model, voice_gender, audio_speed):
-    """Generate audiobook from text"""
+def generate_audiobook(text, tone, selected_voice, voice_options, max_length, audio_speed):
+    """Generate audiobook with enhanced UI feedback"""
     
-    # Create a container for the progress
+    # Progress container
     progress_container = st.container()
     
     with progress_container:
-        # Progress tracking with custom UI
-        st.markdown("### Generating your audiobook...")
+        st.markdown('<div class="progress-container">', unsafe_allow_html=True)
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    try:
+        # Step 1: Rewrite text
+        status_text.markdown("🔄 **Step 1/3:** Rewriting text with selected tone...")
+        progress_bar.progress(25)
         
-        # Custom progress bar
-        progress_bar = st.empty()
-        progress_bar.markdown("""
-        <div class="progress-bar">
-            <div class="progress-fill" style="width: 0%"></div>
+        rewritten_text = st.session_state.text_rewriter.rewrite_text(
+            text, tone, max_length=max_length
+        )
+        
+        # Step 2: Generate speech
+        status_text.markdown("🎤 **Step 2/3:** Converting text to speech...")
+        progress_bar.progress(60)
+        
+        voice_info = voice_options[selected_voice]
+        audio_data = st.session_state.tts_generator.generate_speech(
+            rewritten_text, 
+            voice_embedding_id=voice_info["embedding_id"],
+            speed=audio_speed
+        )
+        
+        # Step 3: Process and save
+        status_text.markdown("💾 **Step 3/3:** Processing audio...")
+        progress_bar.progress(90)
+        
+        audio_file = AudioUtils.save_audio(audio_data, rewritten_text[:50])
+        
+        progress_bar.progress(100)
+        status_text.markdown("✅ **Complete!** Audiobook generated successfully!")
+        
+        # Display results with enhanced UI
+        display_results(text, rewritten_text, audio_data, audio_file, tone, selected_voice)
+        
+        # Save to session history
+        st.session_state.session_manager.add_narration({
+            'original_text': text[:100] + "..." if len(text) > 100 else text,
+            'rewritten_text': rewritten_text,
+            'tone': tone,
+            'voice': selected_voice,
+            'audio_file': audio_file,
+            'audio_data': audio_data,
+            'timestamp': st.session_state.session_manager.get_timestamp()
+        })
+        
+        # Clear progress after 3 seconds
+        import time
+        time.sleep(2)
+        progress_container.empty()
+        
+        # Success message
+        st.markdown("""
+        <div class="toast-success">
+            🎉 <strong>Success!</strong> Your audiobook has been generated and added to your session history.
         </div>
         """, unsafe_allow_html=True)
         
-        status_text = st.empty()
-        
-        try:
-            # Step 1: Rewrite text with selected tone
-            status_text.text("🔄 Rewriting text with selected tone...")
-            progress_bar.markdown("""
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: 25%"></div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            rewritten_text = st.session_state.text_rewriter.rewrite_text(
-                text, tone, max_length=300  # Fixed max_length instead of UI control
-            )
-            
-            # Step 2: Generate speech
-            status_text.text("🎤 Converting text to speech...")
-            progress_bar.markdown("""
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: 50%"></div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Generate speech with the selected voice gender
-            audio_data = st.session_state.tts_generator.generate_speech(
-                rewritten_text, voice_model, voice_gender=voice_gender.lower()
-            )
-            
-            # Step 3: Process and save
-            status_text.text("💾 Processing audio...")
-            progress_bar.markdown("""
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: 75%"></div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            audio_file = AudioUtils.save_audio(audio_data, rewritten_text[:50])
-            
-            progress_bar.markdown("""
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: 100%"></div>
-            </div>
-            """, unsafe_allow_html=True)
-            status_text.text("✅ Audiobook generated successfully!")
-            
-            # Display results
-            display_results(text, rewritten_text, audio_data, audio_file, tone, voice_model, voice_gender, audio_speed)
-            
-            # Save to session history
-            st.session_state.session_manager.add_narration({
-                'original_text': text[:100] + "..." if len(text) > 100 else text,
-                'rewritten_text': rewritten_text,
-                'tone': tone,
-                'voice_model': voice_model,
-                'voice_gender': voice_gender,
-                'audio_file': audio_file,
-                'audio_data': audio_data,
-                'timestamp': st.session_state.session_manager.get_timestamp()
-            })
-            
-            # Clear progress indicators after a brief delay
-            st.session_state.auto_clear_progress = True
-            
-        except Exception as e:
-            st.error(f"Error generating audiobook: {str(e)}")
-            progress_bar.empty()
-            status_text.empty()
+    except Exception as e:
+        status_text.markdown(f"❌ **Error:** {str(e)}")
+        progress_bar.empty()
+        st.markdown(f"""
+        <div class="toast-error">
+            ⚠️ <strong>Error generating audiobook:</strong> {str(e)}
+        </div>
+        """, unsafe_allow_html=True)
 
-def display_results(original_text, rewritten_text, audio_data, audio_file, tone, voice_model, voice_gender, audio_speed):
-    """Display the generated audiobook results"""
+def display_results(original_text, rewritten_text, audio_data, audio_file, tone, voice):
+    """Display results with enhanced styling"""
     
-    st.markdown('<h2 class="section-header">📊 Results</h2>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-header">📊 Generation Results</h2>', unsafe_allow_html=True)
     
     # Text comparison
     col1, col2 = st.columns(2)
     
     with col1:
         st.markdown('<div class="text-comparison">', unsafe_allow_html=True)
-        st.markdown("**Original Text:**")
-        st.write(original_text)
+        st.markdown("**📄 Original Text:**")
+        st.markdown(f'<div style="max-height: 200px; overflow-y: auto; padding: 10px; background: #f8f9fa; border-radius: 8px;">{original_text}</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
     
     with col2:
         st.markdown('<div class="text-comparison">', unsafe_allow_html=True)
-        st.markdown(f"**Rewritten Text ({tone.title()} tone):**")
-        st.write(rewritten_text)
+        st.markdown(f"**✨ Rewritten Text ({tone.title()} tone):**")
+        st.markdown(f'<div style="max-height: 200px; overflow-y: auto; padding: 10px; background: #f8f9fa; border-radius: 8px;">{rewritten_text}</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
     
-    # Audio playback and download
+    # Audio playback section
     st.markdown('<div class="audio-container">', unsafe_allow_html=True)
-    st.markdown("### 🎧 Audio Playback")
+    st.markdown("### 🎧 Audio Playback & Download")
     
-    # Apply speed adjustment to the audio for playback only
-    speed_adjusted_audio = AudioUtils.adjust_speed(audio_data, audio_speed)
+    # Audio info
+    duration = AudioUtils.get_audio_duration(audio_data)
+    st.markdown(f"""
+    **Voice:** {voice} | **Tone:** {tone.title()} | **Duration:** {duration:.1f}s
+    """)
     
-    col1, col2, col3 = st.columns([2, 1, 1])
+    col1, col2 = st.columns([3, 1])
     with col1:
-        st.audio(speed_adjusted_audio, format='audio/wav')
+        st.audio(audio_data, format='audio/wav')
     
     with col2:
         st.download_button(
             label="📥 Download MP3",
-            data=audio_data,  # Original audio without speed adjustment
+            data=audio_data,
             file_name=audio_file,
             mime="audio/wav",
             use_container_width=True
         )
     
-    with col3:
-        if st.button("🔄 Generate Again", use_container_width=True):
-            st.experimental_rerun()
-    
-    st.markdown(f"**Model used:** {voice_model} ({voice_gender})")
     st.markdown('</div>', unsafe_allow_html=True)
 
 def display_past_narrations():
-    """Display past narrations from session"""
+    """Display past narrations with enhanced styling"""
     narrations = st.session_state.session_manager.get_narrations()
     
     if not narrations:
-        st.info("No narrations yet. Generate your first audiobook!")
+        st.info("🎙️ No narrations yet. Generate your first audiobook!")
         return
     
-    for i, narration in enumerate(reversed(narrations[-5:])):  # Show last 5
-        st.markdown(f'<div class="history-item">', unsafe_allow_html=True)
-        st.markdown(f"**{narration['original_text']}**")
-        st.markdown(f"*{narration['tone'].title()} tone • {narration['voice_gender']} • {narration['timestamp']}*")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button(f"🔊 Play", key=f"play_{i}"):
-                st.audio(narration['audio_data'], format='audio/wav')
-        with col2:
-            st.download_button(
-                label="📥 Download",
-                data=narration['audio_data'],
-                file_name=narration['audio_file'],
-                mime="audio/wav",
-                key=f"download_{i}"
-            )
-        st.markdown('</div>', unsafe_allow_html=True)
+    # Clear history button
+    if st.button("🗑️ Clear History", help="Clear all past narrations"):
+        st.session_state.session_manager.clear_history()
+        st.rerun()
+    
+    # Display narrations
+    for i, narration in enumerate(reversed(narrations[-10:])):  # Show last 10
+        with st.expander(f"📖 Narration {len(narrations) - i}", expanded=False):
+            st.markdown(f"""
+            <div class="past-narration-item">
+                <strong>Text:</strong> {narration['original_text']}<br>
+                <strong>Voice:</strong> {narration['voice']}<br>
+                <strong>Tone:</strong> {narration['tone'].title()}<br>
+                <strong>Time:</strong> {narration['timestamp']}
+            </div>
+            """, unsafe_allow_html=True)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button(f"🔄 Replay", key=f"replay_{i}"):
+                    st.audio(narration['audio_data'], format='audio/wav')
+            
+            with col2:
+                st.download_button(
+                    label="📥 Re-download",
+                    data=narration['audio_data'],
+                    file_name=narration['audio_file'],
+                    mime="audio/wav",
+                    key=f"download_{i}"
+                )
 
 if __name__ == "__main__":
     main()

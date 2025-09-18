@@ -1,10 +1,8 @@
-# utils/audio_utils.py
 import io
 import uuid
 import numpy as np
 import soundfile as sf
 from pathlib import Path
-import librosa
 
 class AudioUtils:
     @staticmethod
@@ -87,34 +85,3 @@ class AudioUtils:
             return True
         except Exception:
             return False
-
-    @staticmethod
-    def adjust_speed(audio_data: bytes, speed: float) -> bytes:
-        """
-        Adjust the speed of audio data without changing pitch
-        
-        Args:
-            audio_data: Input audio data as bytes
-            speed: Speed factor (0.5 = half speed, 2.0 = double speed)
-        
-        Returns:
-            Speed-adjusted audio data as bytes
-        """
-        try:
-            # Load audio from bytes
-            buffer = io.BytesIO(audio_data)
-            audio, sample_rate = sf.read(buffer)
-            
-            # Adjust speed using librosa
-            audio_stretched = librosa.effects.time_stretch(audio, rate=speed)
-            
-            # Convert back to bytes
-            output_buffer = io.BytesIO()
-            sf.write(output_buffer, audio_stretched, sample_rate, format='WAV')
-            output_buffer.seek(0)
-            
-            return output_buffer.read()
-        except Exception as e:
-            print(f"Error adjusting audio speed: {e}")
-            # Fallback: return original audio if adjustment fails
-            return audio_data
