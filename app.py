@@ -219,15 +219,15 @@ def initialize_session_state():
     if 'session_manager' not in st.session_state:
         st.session_state.session_manager = SessionManager()
     if 'selected_voice' not in st.session_state:
-        st.session_state.selected_voice = "Emma (Female - US)"
+        st.session_state.selected_voice = "Tina (Female - US)"
 
 def get_voice_options():
     """Return available voice options with gender and accent info"""
     return {
-        "Emma (Female - US)": {"embedding_id": 7306, "gender": "female", "accent": "US", "description": "Clear, professional female voice"},
+        "Tina (Female - US)": {"embedding_id": 9000, "gender": "female", "accent": "US", "description": "Clear, professional female voice"},
         "Sarah (Female - UK)": {"embedding_id": 5000, "gender": "female", "accent": "UK", "description": "Elegant British female voice"},
-        "James (Male - US)": {"embedding_id": 1234, "gender": "male", "accent": "US", "description": "Deep, authoritative male voice"},
-        "David (Male - Scottish)": {"embedding_id": 3000, "gender": "male", "accent": "Scottish", "description": "Rich Scottish male voice"}
+        "Michael (Male - US)": {"embedding_id": 1234, "gender": "male", "accent": "US", "description": "Deep, authoritative male voice"},
+        "Zones (Male - Scottish)": {"embedding_id": 3000, "gender": "male", "accent": "Scottish", "description": "Rich Scottish male voice"}
     }
 
 def main():
@@ -255,14 +255,15 @@ def main():
                 "Choose your preferred voice:",
                 options=list(voice_options.keys()),
                 key="voice_selection",
-                help="Select from our premium voice collection"
+                help="Select from our premium voice collection",
+                on_change=lambda: st.session_state.update(selected_voice=st.session_state.voice_selection)
             )
             
             # Display voice info
             if selected_voice:
                 voice_info = voice_options[selected_voice]
                 st.markdown(f"""
-                <div class="voice-card selected">
+                <div class="voice-card {'selected' if selected_voice == st.session_state.voice_selection else ''}">
                     <strong>{selected_voice}</strong><br>
                     <small>{voice_info['description']}</small><br>
                     <em>Gender: {voice_info['gender'].title()} | Accent: {voice_info['accent']}</em>
@@ -342,7 +343,7 @@ def main():
                     if not text_input.strip():
                         st.error("⚠️ Please provide some text to convert.")
                     else:
-                        generate_audiobook(text_input, tone, selected_voice, voice_options, max_length, audio_speed)
+                        generate_audiobook(text_input, tone, st.session_state.selected_voice, voice_options, max_length, audio_speed)
         
         with col2:
             st.markdown('<h2 class="section-header">📚 Past Narrations</h2>', unsafe_allow_html=True)
@@ -351,11 +352,7 @@ def main():
         st.markdown('</div>', unsafe_allow_html=True)
 
 def generate_audiobook(text, tone, selected_voice, voice_options, max_length, audio_speed):
-    """Generate audiobook with enhanced UI feedback"""
-    
-    # Progress container
     progress_container = st.container()
-    
     with progress_container:
         st.markdown('<div class="progress-container">', unsafe_allow_html=True)
         progress_bar = st.progress(0)
@@ -366,35 +363,34 @@ def generate_audiobook(text, tone, selected_voice, voice_options, max_length, au
         # Step 1: Rewrite text
         status_text.markdown("🔄 **Step 1/3:** Rewriting text with selected tone...")
         progress_bar.progress(25)
+        rewritten_text = st.session_state.text_rewriter.rewrite_text(text, tone, max_length=max_length)
         
-        rewritten_text = st.session_state.text_rewriter.rewrite_text(
-            text, tone, max_length=max_length
-        )
-        
-        # Step 2: Generate speech
+        # Step 2: Generate speech with validated voice
         status_text.markdown("🎤 **Step 2/3:** Converting text to speech...")
         progress_bar.progress(60)
         
         voice_info = voice_options[selected_voice]
+        expected_gender = voice_info["gender"]
+        embedding_id = voice_info["embedding_id"]
+        
+        # Validate embedding_id against gender (debugging)
+        print(f"Generating with voice: {selected_voice}, Embedding ID: {embedding_id}, Expected Gender: {expected_gender}")
         audio_data = st.session_state.tts_generator.generate_speech(
             rewritten_text, 
-            voice_embedding_id=voice_info["embedding_id"],
+            voice_embedding_id=embedding_id,
             speed=audio_speed
         )
         
         # Step 3: Process and save
         status_text.markdown("💾 **Step 3/3:** Processing audio...")
         progress_bar.progress(90)
-        
         audio_file = AudioUtils.save_audio(audio_data, rewritten_text[:50])
         
         progress_bar.progress(100)
         status_text.markdown("✅ **Complete!** Audiobook generated successfully!")
         
-        # Display results with enhanced UI
         display_results(text, rewritten_text, audio_data, audio_file, tone, selected_voice)
         
-        # Save to session history
         st.session_state.session_manager.add_narration({
             'original_text': text[:100] + "..." if len(text) > 100 else text,
             'rewritten_text': rewritten_text,
@@ -405,12 +401,9 @@ def generate_audiobook(text, tone, selected_voice, voice_options, max_length, au
             'timestamp': st.session_state.session_manager.get_timestamp()
         })
         
-        # Clear progress after 3 seconds
         import time
         time.sleep(2)
         progress_container.empty()
-        
-        # Success message
         st.markdown("""
         <div class="toast-success">
             🎉 <strong>Success!</strong> Your audiobook has been generated and added to your session history.
@@ -425,7 +418,7 @@ def generate_audiobook(text, tone, selected_voice, voice_options, max_length, au
             ⚠️ <strong>Error generating audiobook:</strong> {str(e)}
         </div>
         """, unsafe_allow_html=True)
-
+        
 def display_results(original_text, rewritten_text, audio_data, audio_file, tone, voice):
     """Display results with enhanced styling"""
     
