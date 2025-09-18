@@ -97,6 +97,7 @@ def load_css():
         margin: 1rem 0;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
+        color: #000000; /* Black text for readability */
     }
     
     .text-comparison:hover {
@@ -181,6 +182,7 @@ def load_css():
         margin: 0.8rem 0;
         transition: all 0.3s ease;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        color: #000000; /* Black text for readability */
     }
     
     .past-narration-item:hover {
@@ -281,7 +283,7 @@ def main():
             
             # Advanced settings
             st.markdown("### 🔧 Advanced Settings")
-            max_length = st.slider("Max tokens for rewriting", 100, 1000, 300, 50)
+            max_length = st.slider("Max tokens for rewriting", 100, 600, 300, 50)  # Reduced max to 600
             audio_speed = st.slider("Audio speed", 0.5, 2.0, 1.0, 0.1)
             
             # Statistics
@@ -313,7 +315,7 @@ def main():
                 text_input = st.text_area(
                     "Enter your text here:",
                     height=250,
-                    placeholder="Paste your text here or upload a .txt file...\n\nTip: Longer texts work best for audiobook creation!",
+                    placeholder="Paste your text here or upload a .txt file...\n\nTip: Keep text under 600 tokens for full reading!",
                     help="Enter the text you want to convert to an audiobook"
                 )
             else:
@@ -324,7 +326,7 @@ def main():
                 )
                 if uploaded_file:
                     try:
-                        text_input = uploaded_file.read().decode('utf-8')
+                        text_input = uploaded_file.read().decode('utf-8', errors='replace')  # Robust decoding
                         st.success(f"✅ File uploaded successfully! ({len(text_input)} characters)")
                         with st.expander("📄 File Content Preview", expanded=False):
                             st.text_area(
@@ -360,10 +362,14 @@ def generate_audiobook(text, tone, selected_voice, voice_options, max_length, au
         st.markdown('</div>', unsafe_allow_html=True)
     
     try:
-        # Step 1: Rewrite text
+        # Step 1: Rewrite text (truncate before rewriting to fit 600-token limit)
         status_text.markdown("🔄 **Step 1/3:** Rewriting text with selected tone...")
         progress_bar.progress(25)
-        rewritten_text = st.session_state.text_rewriter.rewrite_text(text, tone, max_length=max_length)
+        # Truncate text to max_length (capped at 600 for model compatibility)
+        truncated_text = text[:max_length] if len(text) > max_length else text
+        print(f"Truncated text length: {len(truncated_text)} characters")
+        rewritten_text = st.session_state.text_rewriter.rewrite_text(truncated_text, tone, max_length=max_length)
+        print(f"Rewritten text length: {len(rewritten_text)} characters")
         
         # Step 2: Generate speech with validated voice
         status_text.markdown("🎤 **Step 2/3:** Converting text to speech...")
@@ -389,7 +395,7 @@ def generate_audiobook(text, tone, selected_voice, voice_options, max_length, au
         progress_bar.progress(100)
         status_text.markdown("✅ **Complete!** Audiobook generated successfully!")
         
-        display_results(text, rewritten_text, audio_data, audio_file, tone, selected_voice)
+        display_results(text, audio_data, audio_file, tone, selected_voice)
         
         st.session_state.session_manager.add_narration({
             'original_text': text[:100] + "..." if len(text) > 100 else text,
@@ -419,25 +425,16 @@ def generate_audiobook(text, tone, selected_voice, voice_options, max_length, au
         </div>
         """, unsafe_allow_html=True)
         
-def display_results(original_text, rewritten_text, audio_data, audio_file, tone, voice):
+def display_results(original_text, audio_data, audio_file, tone, voice):
     """Display results with enhanced styling"""
     
     st.markdown('<h2 class="section-header">📊 Generation Results</h2>', unsafe_allow_html=True)
     
-    # Text comparison
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown('<div class="text-comparison">', unsafe_allow_html=True)
-        st.markdown("**📄 Original Text:**")
-        st.markdown(f'<div style="max-height: 200px; overflow-y: auto; padding: 10px; background: #f8f9fa; border-radius: 8px;">{original_text}</div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown('<div class="text-comparison">', unsafe_allow_html=True)
-        st.markdown(f"**✨ Rewritten Text ({tone.title()} tone):**")
-        st.markdown(f'<div style="max-height: 200px; overflow-y: auto; padding: 10px; background: #f8f9fa; border-radius: 8px;">{rewritten_text}</div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+    # Text display (only original text)
+    st.markdown('<div class="text-comparison">', unsafe_allow_html=True)
+    st.markdown("**📄 Original Text:**")
+    st.markdown(f'<div style="max-height: 200px; overflow-y: auto; padding: 10px; background: #f8f9fa; border-radius: 8px; color: #000000;">{original_text}</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
     
     # Audio playback section
     st.markdown('<div class="audio-container">', unsafe_allow_html=True)

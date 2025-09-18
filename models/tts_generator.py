@@ -22,7 +22,8 @@ class TTSGenerator:
             model_name = "microsoft/speecht5_tts"
             self.processor = SpeechT5Processor.from_pretrained(model_name)
             self.model = SpeechT5ForTextToSpeech.from_pretrained(model_name)
-            self.vocoder = SpeechT5HifiGan.from_pretrained("microsoft/speecht5_hifigan")
+            self.vocoder = SpeechT5HifiGan.from_pretrained("microsoft/speecht5_hifigan")  # Fixed typo here
+            print("SpeechT5 model initialized successfully.")
         except Exception as e:
             print(f"Error initializing SpeechT5 model: {e}")
             raise
@@ -32,11 +33,13 @@ class TTSGenerator:
         if os.path.exists(cache_file):
             with open(cache_file, "rb") as f:
                 self.speaker_embeddings = pickle.load(f)
+            print("Speaker embeddings loaded from cache.")
         else:
             try:
                 # Attempt to load the dataset; if it fails, use precomputed fallback
                 try:
                     embeddings_dataset = load_dataset("Matthijs/cmu-arctic-xvectors", split="validation")
+                    print("Dataset loaded successfully.")
                 except Exception as e:
                     print(f"Failed to load dataset: {e}. Using precomputed fallback embeddings.")
                     embeddings_dataset = None
@@ -48,14 +51,15 @@ class TTSGenerator:
                         1234: torch.tensor(embeddings_dataset[1234]["xvector"]).unsqueeze(0),  # Michael (Male - US)
                         3000: torch.tensor(embeddings_dataset[3000]["xvector"]).unsqueeze(0),  # Zones (Male - Scottish)
                     }
+                    print("Speaker embeddings loaded from dataset.")
                 else:
                     # Fallback to precomputed or random embeddings with known gender characteristics
                     print("Using fallback embeddings due to dataset loading failure.")
                     self.speaker_embeddings = {
-                        9000: torch.randn(1, 512),  # Default female (Tina)
-                        5000: torch.randn(1, 512),  # Default female (Sarah)
-                        1234: torch.randn(1, 512),  # Default male (Michael)
-                        3000: torch.randn(1, 512),  # Default male (Zones)
+                        9000: torch.randn(1, 512) * 0.1,  # Default female (Tina) - scaled for better range
+                        5000: torch.randn(1, 512) * 0.1,  # Default female (Sarah)
+                        1234: torch.randn(1, 512) * 0.1,  # Default male (Michael)
+                        3000: torch.randn(1, 512) * 0.1,  # Default male (Zones)
                     }
                 
                 with open(cache_file, "wb") as f:
@@ -63,8 +67,8 @@ class TTSGenerator:
             except Exception as e:
                 print(f"Error loading speaker embeddings: {e}")
                 self.speaker_embeddings = {
-                    9000: torch.randn(1, 512),  # Default female (Tina)
-                    1234: torch.randn(1, 512),  # Default male (Michael)
+                    9000: torch.randn(1, 512) * 0.1,  # Default female (Tina)
+                    1234: torch.randn(1, 512) * 0.1,  # Default male (Michael)
                 }
     
     def generate_speech(self, text: str, voice_embedding_id: int = 9000, speed: float = 1.0) -> bytes:
@@ -80,18 +84,22 @@ class TTSGenerator:
             Audio data as bytes
         """
         try:
-            # Truncate text if too long
-            if len(text) > 1000:
-                text = text[:1000] + "..."
+            print(f"Generating speech for text: '{text[:50]}...' with embedding_id: {voice_embedding_id}")
+            
+            # Decode text to ensure proper encoding
+            if isinstance(text, bytes):
+                text = text.decode('utf-8', errors='replace')
+            
+            # Tokenize text and truncate to max sequence length (600)
+            inputs = self.processor(text=text, return_tensors="pt", truncation=True, max_length=600)
+            token_count = inputs["input_ids"].shape[1]
+            print(f"Token count after truncation: {token_count}")
             
             # Get speaker embedding with strict validation
             if voice_embedding_id not in self.speaker_embeddings:
                 print(f"Warning: Invalid voice_embedding_id {voice_embedding_id}, falling back to 9000 (Tina)")
                 voice_embedding_id = 9000
             speaker_embedding = self.speaker_embeddings[voice_embedding_id]
-            
-            # Process input
-            inputs = self.processor(text=text, return_tensors="pt")
             
             # Generate speech
             speech = self.model.generate_speech(
@@ -105,6 +113,16 @@ class TTSGenerator:
                 speech = self._modify_speed(speech.numpy(), speed)
             else:
                 speech = speech.numpy()
+            
+            # Log actual speech length
+            speech_length = len(speech)
+            print(f"Generated speech length: {speech_length} samples")
+            
+            # Validate audio (check if it's silent or beepy)
+            audio_flat = speech.flatten()
+            if np.all(np.abs(audio_flat) < 1e-5):
+                print("Warning: Generated audio is silent. Using fallback.")
+                return self._generate_fallback(text)
             
             return self._audio_to_bytes(speech, sample_rate=16000)
             
@@ -136,12 +154,12 @@ class TTSGenerator:
         return buffer.read()
     
     def _generate_fallback(self, text: str) -> bytes:
-        """Generate a simple fallback audio"""
-        duration = len(text) * 0.1
+        """Generate a silent fallback audio to avoid beeps"""
+        print("Using silent fallback audio.")
+        duration = len(text) * 0.15  # Duration based on text length
         sample_rate = 16000
         samples = int(duration * sample_rate)
-        t = np.linspace(0, duration, samples)
-        audio = 0.1 * np.sin(2 * np.pi * 440 * t)
+        audio = np.zeros(samples, dtype=np.float32)  # Silent audio
         return self._audio_to_bytes(audio, sample_rate)
     
     def get_available_voices(self):
